@@ -1,0 +1,17 @@
+name: Release Docker Image
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    uses: ./.github/workflows/docker-build.yml
+    with:
+      image_name: ghcr.io/${{ github.repository }}
+      tags: |
+        type=raw,value=latest
+        type=sha,prefix=sha-
+      push: true
+    secrets: inherit

@@ -1,0 +1,88 @@
+name: Test Docker Image
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-publish:
+    uses: ./.github/workflows/docker-build.yml
+    with:
+      image_name: ghcr.io/${{ github.repository }}
+      tags: |
+        type=raw,value=pr-${{ github.event.number }}
+      push: true
+    secrets: inherit
+
+  test-health:
+    needs: build-and-publish
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull Docker image
+        run: docker pull ghcr.io/${{ github.repository }}:pr-${{ github.event.number }}
+
+      - name: Run Docker container
+        run: |
+          docker run -d --rm --name test-container -p 8000:8000 ghcr.io/${{ github.repository }}:pr-${{ github.event.number }}
+
+      - name: Wait for health check
+        run: |
+          echo "Waiting for container to become healthy..."
+          for i in {1..30}; do
+            HEALTH=$(docker inspect --format='{{json .State.Health.Status}}' test-container)
+            echo "Health status: $HEALTH"
+            if [ "$HEALTH" == "\"healthy\"" ]; then
+              echo "Container is healthy!"
+              exit 0
+            fi
+            if [ "$HEALTH" == "\"unhealthy\"" ]; then
+              echo "Container is unhealthy!"
+              docker logs test-container
+              exit 1
+            fi
+            sleep 2
+          done
+          echo "Timed out waiting for container health check."
+          docker logs test-container
+          exit 1
+
+      - name: Cleanup Container
+        if: always()
+        run: docker stop test-container || true
+
+      - name: Delete ephemeral package version
+        if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PACKAGE_NAME="${{ github.event.repository.name }}"
+          OWNER="${{ github.repository_owner }}"
+          TAG="pr-${{ github.event.number }}"
+
+          echo "Identifying package version for tag: $TAG"
+
+          # Fetch versions and filter for the specific tag
+          # Note: Using /users/ endpoint. If this fails for orgs, /orgs/ might be needed.
+          # We'll try to determine the type or just try /users/ first.
+
+          VERSION_ID=$(gh api "/users/$OWNER/packages/container/$PACKAGE_NAME/versions" --jq ".[] | select(.metadata.container.tags[] | select(. == \"$TAG\")) | .id")
+
+          if [ -n "$VERSION_ID" ]; then
+            echo "Found version ID: $VERSION_ID. Deleting..."
+            gh api -X DELETE "/users/$OWNER/packages/container/$PACKAGE_NAME/versions/$VERSION_ID"
+            echo "Package version deleted."
+          else
+            echo "No package version found with tag $TAG. It might have been already deleted or never created."
+          fi

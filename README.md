@@ -58,6 +58,38 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## 🐳 Alternative Installation as Container
+
+You can also run the server using Docker or Podman.
+
+**Using Docker Run:**
+
+```bash
+docker run -d -p 8000:8000 --name daisyui-mcp ghcr.io/birdseyevue/daisyui-mcp:latest
+```
+
+**Using Docker Compose:**
+
+Create a `compose.yaml` file (or use the one in the repo):
+
+```yaml
+services:
+  daisyui-mcp:
+    image: ghcr.io/birdseyevue/daisyui-mcp:latest
+    ports:
+      - "8000:8000"
+    environment:
+      # Overrides the default internal port (8000) if needed
+      - PORT=8000
+    restart: unless-stopped
+```
+
+Then run:
+
+```bash
+docker compose up -d
+```
+
 ## 🚀 Usage
 
 ### First‑time setup
@@ -89,13 +121,26 @@ python update_components.py
 Add the MCP server to your AI assistant’s configuration.
 
 <details>
-<summary><b>Generic Configuration</b></summary>
+<summary><b>Generic Configuration (Local Python)</b></summary>
 
+*For VS Code (`.vscode/mcp.json`):*
 ```json
 {
-  "servers": {
+  "mcpServers": {
     "daisyui": {
-      "command": "<path-to-repo>/venv/Scripts/python.exe",
+      "command": "<path-to-repo>/venv/bin/python",
+      "args": ["<path-to-repo>/mcp_server.py"]
+    }
+  }
+}
+```
+
+*For Zed (`~/.config/zed/settings.json`):*
+```json
+{
+  "context_servers": {
+    "daisyui": {
+      "command": "<path-to-repo>/venv/bin/python",
       "args": ["<path-to-repo>/mcp_server.py"]
     }
   }
@@ -105,30 +150,58 @@ Add the MCP server to your AI assistant’s configuration.
 </details>
 
 <details>
-<summary><b>Windows Example</b></summary>
+<summary><b>Docker Example</b></summary>
 
+When running via Docker, you can connect using either standard `stdio` or HTTP/SSE. Both VS Code (GitHub Copilot) and Zed support both methods natively.
+
+**Option A: Stdio (Spawned directly by Editor)**
+Your editor will spin up the container and manage its lifecycle automatically. 
+
+*For VS Code (`.vscode/mcp.json`):*
 ```json
 {
-  "servers": {
+  "mcpServers": {
     "daisyui": {
-      "command": "C:/Users/username/Downloads/fastmcp/venv/Scripts/python.exe",
-      "args": ["C:/Users/username/Downloads/fastmcp/mcp_server.py"]
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "ghcr.io/birdseyevue/daisyui-mcp:latest", "python", "mcp_server.py"]
     }
   }
 }
 ```
 
-</details>
-
-<details>
-<summary><b>macOS/Linux Example</b></summary>
-
+*For Zed (`~/.config/zed/settings.json`):*
 ```json
 {
-  "servers": {
+  "context_servers": {
     "daisyui": {
-      "command": "/home/username/fastmcp/venv/bin/python",
-      "args": ["/home/username/fastmcp/mcp_server.py"]
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "ghcr.io/birdseyevue/daisyui-mcp:latest", "python", "mcp_server.py"]
+    }
+  }
+}
+```
+
+**Option B: HTTP / SSE (Background Service)**
+If you are running the container continuously in the background (`docker run -d -p 8000:8000...`), connect via the local network port.
+
+*For VS Code (`.vscode/mcp.json`):*
+```json
+{
+  "mcpServers": {
+    "daisyui": {
+      "type": "sse",
+      "url": "http://localhost:8000/mcp"
+    }
+  }
+}
+```
+
+*For Zed (`~/.config/zed/settings.json`):*
+```json
+{
+  "context_servers": {
+    "daisyUI": {
+      "url": "http://localhost:8000/mcp"
     }
   }
 }
@@ -138,7 +211,7 @@ Add the MCP server to your AI assistant’s configuration.
 
 ## 📁 Project Structure
 
-```
+```text
 fastmcp/
 ├── mcp_server.py          # The MCP server
 ├── update_components.py   # Script to fetch/update component docs
@@ -151,7 +224,7 @@ fastmcp/
     └── ... (60+ components)
 ```
 
-## ❓ 1 most Frequently Asked Question
+## ❓ Frequently Asked Questions
 
 ### Why are `update_components.py` and `mcp_server.py` separate scripts?
 
@@ -162,6 +235,10 @@ It may seem more efficient to combine them into a single script that automatical
 - **Control over updates** – You might want to run the server with a known‑good set of docs, and only update when you explicitly choose to. This separation lets you keep the server running while you fetch updates independently.
 
 > **If you don’t need custom components and prefer a one‑step launch**, you can create a simple wrapper script (`.bat`, `.sh`, or `.ps1`) that runs both commands sequentially, or modify the server to call the update function on startup. The current design prioritizes flexibility for users who want to keep their own modifications.
+
+### Stdio vs HTTP/SSE: Which one should I use?
+
+The Model Context Protocol supports two modes of communication. **Stdio** (Standard Input/Output) is the most common; your AI editor spawns the server as a local process. It is highly secure and ties the server's lifecycle directly to the editor. **HTTP/SSE** allows the server to run as a standalone web service (e.g., in a background Docker container). This prevents local environment pollution, and modern editors like VS Code (via GitHub Copilot) and Zed support it natively! Use HTTP/SSE if you are using multiple editors or tools that should be able to access the DaisyUI MCP Server, or in case you want to host it somewhere to use for multiple developers.
 
 ## ❗ Disclaimer
 
