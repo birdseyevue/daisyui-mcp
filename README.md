@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/birdseyevue-daisyui-mcp-badge.png)](https://mseep.ai/app/birdseyevue-daisyui-mcp)
+
 <div align="center">
 
 # 🌼 DaisyUI MCP Server
