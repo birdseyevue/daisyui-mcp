@@ -1,5 +1,3 @@
-[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/birdseyevue-daisyui-mcp-badge.png)](https://mseep.ai/app/birdseyevue-daisyui-mcp)
-
 <div align="center">
 
 # 🌼 DaisyUI MCP Server
@@ -16,6 +14,12 @@
 [Features](#-features) • [Installation](#-installation) • [Docker](#-docker) • [Usage](#-usage) • [Configuration](#-configuration)
 
 </div>
+
+---
+
+> ## 🌼 Heads up
+>
+> This repo has been a fun little project, and it's pretty cool seeing it hit 70+ stars and 15+ forks, thank you! But I wanted to let anyone new know that DaisyUI has finally released official "Skills" over at [daisyui.com/docs/skill/](https://daisyui.com/docs/skill/). I now recommend using that one since it's official and, honestly, just better for modern AI models. This repo will still work if you're already using it, but for new projects I'd go with the official skill. I'd at least recommend you check it out and see if it fits your needs better. Thanks again for the support, and happy coding! 🌼
 
 ---
 
